@@ -18,6 +18,7 @@ func init() {
 	httpsPort = *flag.Int("port_https", 443, "Port to server HTTPS.")
 	serveSecure = *flag.Bool("https_only", false, "Server HTTPS. Default false.")
 	authDigest = *flag.Bool("auth_digest", false, "Digest Authentication. Default Basic.")
+
 	sqlAddress = *flag.String("sql_address", "127.0.0.1", "SQL-Server address.")
 	sqlPort = *flag.Int("sql_port", 3306, "SQL-Server port.")
 	sqlUsername = *flag.String("sql_username", "root", "SQL-Server username for this application.")
@@ -26,8 +27,6 @@ func init() {
 
 	flag.Parse()
 }
-
-
 
 func Execute() {
 	srv := &webdav.Handler{
@@ -42,32 +41,12 @@ func Execute() {
 		},
 	}
 
-	sql, err := MySQLClient("192.168.56.1", 3306, "root", "my-secret-pw", "test")
-	if err != nil {
-		println(err)
-	} else {
-		res, err := sql.Connection.Query("Select Username, Password from User")
+	sqlAddress = "192.168.56.1"
+	sqlPassword = "my-secret-pw"
 
-		if err == nil {
-			for res.Next() {
-				nes, _ := res.Columns()
-
-				for _, el := range nes {
-					var username, password string
-					err = res.Scan(&username, &password)
-					if err != nil {
-						println(err)
-					} else {
-						println(el + ": " + username)
-					}
-				}
-			}
-		} else {
-			println(err)
-		}
+	if err := setupDatabase(); err != nil {
+		println(err.Error())
 	}
-
-
 
 	http.Handle("/", srv)
 
