@@ -42,11 +42,17 @@ func Execute() {
 	}
 
 	sqlAddress = "192.168.56.1"
+	sqlAddress = "127.0.0.1"
 	sqlPassword = "my-secret-pw"
+	sqlPassword = ""
 
-	if err := setupDatabase(); err != nil {
-		println(err.Error())
+	sqlServer, err := setupDatabase()
+	if err != nil {
+		println("FEHLER")
 	}
+
+	sqlServer.getUserPassword("coolimc")
+
 
 	http.Handle("/", srv)
 
