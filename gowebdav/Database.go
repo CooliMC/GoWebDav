@@ -48,44 +48,6 @@ type DatabaseConnection struct {
 	stmtGetPwdByUser *sql.Stmt
 }
 
-func createDatabaseConnection(dbClient *sql.DB) *DatabaseConnection {
-	//Create the getPasswordByUser Statement
-	stmt1, err1 := dbClient.Prepare(getPasswordByUsername)
-
-	//Check if all prepared statements are ready
-	if err1 != nil {
-		return nil
-	}
-
-	//Return the prepared DatabaseConnection
-	return &DatabaseConnection { dbClient,  stmt1 }
-}
-
-//All generic function for quick Setup and Check
-func setupDatabase() (*DatabaseConnection, error) {
-	//Create a new Connection the given DB and test it
-	dbClient, err := utils.MySQLClient(sqlAddress, sqlPort, sqlUsername, sqlPassword)
-
-	//Check if an error occurred and return
-	if err != nil {
-		return nil, err
-	}
-
-	//Check if the Database exist/create
-	// and tell the client to use it
-	if err := checkDatabase(dbClient); err != nil {
-		return nil, err
-	}
-
-	//Check if the Tables exists/create
-	if err := setupTables(dbClient); err != nil {
-		return nil, err
-	}
-
-	//Return nil-Error
-	return createDatabaseConnection(dbClient), nil
-}
-
 func checkDatabase(dbClient *sql.DB) error {
 	//Check and setup the Database and return occurred errors
 	if _, err := dbClient.Exec("CREATE DATABASE IF NOT EXISTS `" + sqlDatabase + "`;"); err != nil {
@@ -124,6 +86,44 @@ func setupTables(dbClient *sql.DB) error {
 
 	//Return the result of check and setup the GroupFolderDB
 	_, err := dbClient.Exec(crtFKGroupFolderTable); return err
+}
+
+func createDatabaseConnection(dbClient *sql.DB) *DatabaseConnection {
+	//Create the getPasswordByUser Statement
+	stmt1, err1 := dbClient.Prepare(getPasswordByUsername)
+
+	//Check if all prepared statements are ready
+	if err1 != nil {
+		return nil
+	}
+
+	//Return the prepared DatabaseConnection
+	return &DatabaseConnection { dbClient,  stmt1 }
+}
+
+//All generic function for quick Setup and Check
+func setupDatabase() (*DatabaseConnection, error) {
+	//Create a new Connection the given DB and test it
+	dbClient, err := utils.MySQLClient(sqlAddress, sqlPort, sqlUsername, sqlPassword)
+
+	//Check if an error occurred and return
+	if err != nil {
+		return nil, err
+	}
+
+	//Check if the Database exist/create
+	// and tell the client to use it
+	if err := checkDatabase(dbClient); err != nil {
+		return nil, err
+	}
+
+	//Check if the Tables exists/create
+	if err := setupTables(dbClient); err != nil {
+		return nil, err
+	}
+
+	//Return nil-Error
+	return createDatabaseConnection(dbClient), nil
 }
 
 func (dbCon DatabaseConnection) getUserPassword(username string) (string, error) {

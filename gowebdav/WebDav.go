@@ -3,6 +3,7 @@ package gowebdav
 import (
 	"flag"
 	"fmt"
+	"github.com/abbot/go-http-auth"
 	"golang.org/x/net/webdav"
 	"log"
 	"net/http"
@@ -10,13 +11,14 @@ import (
 
 var dirFlag, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
 var httpPort, httpsPort, sqlPort int
-var serveSecure, authDigest bool
+var serveSecure, authEnabled, authDigest bool
 
 func init() {
 	dirFlag = *flag.String("root_dir", "./media", "Directory to server from. Default is media.")
 	httpPort = *flag.Int("port_http", 80, "Port to server HTTP.")
 	httpsPort = *flag.Int("port_https", 443, "Port to server HTTPS.")
 	serveSecure = *flag.Bool("https_only", false, "Server HTTPS. Default false.")
+	authEnabled = *flag.Bool("auth_enabled", true, "Authentication enabled. Default true.")
 	authDigest = *flag.Bool("auth_digest", false, "Digest Authentication. Default Basic.")
 
 	sqlAddress = *flag.String("sql_address", "127.0.0.1", "SQL-Server address.")
@@ -29,6 +31,8 @@ func init() {
 }
 
 func Execute() {
+	dirFlag = "D://MediaTest//"
+
 	srv := &webdav.Handler{
 		FileSystem: webdav.Dir(dirFlag),
 		LockSystem: webdav.NewMemLS(),
@@ -41,20 +45,62 @@ func Execute() {
 		},
 	}
 
-	sqlAddress = "192.168.56.1"
-	sqlAddress = "127.0.0.1"
+
+	sqlAddress = "192.168.2.200"
+	sqlPort = 43306
 	sqlPassword = "my-secret-pw"
-	sqlPassword = ""
 
 	sqlServer, err := setupDatabase()
 	if err != nil {
-		println("FEHLER")
+		log.Printf("SQL-Database Error: %s", err.Error())
+		return
 	}
 
-	sqlServer.getUserPassword("coolimc")
+	if authEnabled {
+		if authDigest {
+			authenticator := auth.NewDigestAuthenticator("WebDAV", func(user, realm string) string {
+				if pwd, err := sqlServer.getUserPassword(user); err == nil {
+					return pwd
+				} else {
+					return ""
+				}
+			})
 
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				if username, authinfo := authenticator.CheckAuth(r); username == "" {
+					authenticator.RequireAuth(w, r)
+				} else {
+					ar := auth.AuthenticatedRequest{Request: *r, Username: username}
+					ar.Header.Set(auth.AuthUsernameHeader, ar.Username)
+					if authinfo != nil {
+						w.Header().Set(authenticator.Headers.V().AuthInfo, *authinfo)
+					}
+					srv.ServeHTTP(w, &ar.Request)
+				}
+			})
+		} else {
+			authenticator := &auth.BasicAuth{Realm: "WebDAV", Secrets: func(user, realm string) string {
+				if pwd, err := sqlServer.getUserPassword(user); err == nil {
+					return pwd
+				} else {
+					return ""
+				}
+			}}
 
-	http.Handle("/", srv)
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				if username := authenticator.CheckAuth(r); username == "" {
+					authenticator.RequireAuth(w, r)
+				} else {
+					ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+					ar.Header.Set(auth.AuthUsernameHeader, ar.Username)
+					srv.ServeHTTP(w, &ar.Request)
+				}
+			})
+		}
+	} else {
+		http.HandleFunc("/", srv.ServeHTTP)
+	}
+
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil); err != nil {
 		log.Fatalf("Error with WebDAV server: %v", err)
