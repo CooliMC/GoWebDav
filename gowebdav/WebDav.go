@@ -7,6 +7,7 @@ import (
 	"golang.org/x/net/webdav"
 	"log"
 	"net/http"
+	"os"
 )
 
 var dirFlag, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
@@ -101,6 +102,17 @@ func Execute() {
 		http.HandleFunc("/", srv.ServeHTTP)
 	}
 
+	if serveSecure {
+		if _, err := os.Stat("./cert.pem"); err != nil {
+			fmt.Println("[x] No cert.pem in current directory. Please provide a valid cert")
+			return
+		}
+		if _, er := os.Stat("./key.pem"); er != nil {
+			fmt.Println("[x] No key.pem in current directory. Please provide a valid cert")
+			return
+		}
+		go http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil)
+	}
 
 	if err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil); err != nil {
 		log.Fatalf("Error with WebDAV server: %v", err)
