@@ -12,13 +12,14 @@ import (
 
 var dirFlag, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
 var httpPort, httpsPort, sqlPort int
-var serveSecure, authEnabled, authDigest bool
+var httpEnabled, httpsEnabled, authEnabled, authDigest bool
 
 func init() {
 	dirFlag = *flag.String("root_dir", "./media", "Directory to server from. Default is media.")
 	httpPort = *flag.Int("port_http", 80, "Port to server HTTP.")
 	httpsPort = *flag.Int("port_https", 443, "Port to server HTTPS.")
-	serveSecure = *flag.Bool("https_only", false, "Server HTTPS. Default false.")
+	httpEnabled = *flag.Bool("http_enabled", true, "Server HTTP. Default true.")
+	httpsEnabled = *flag.Bool("https_enabled", false, "Server HTTPS. Default false.")
 	authEnabled = *flag.Bool("auth_enabled", true, "Authentication enabled. Default true.")
 	authDigest = *flag.Bool("auth_digest", false, "Digest Authentication. Default Basic.")
 
@@ -31,6 +32,7 @@ func init() {
 	flag.Parse()
 }
 
+//Main WebDAVServer Execute() function
 func Execute() {
 	dirFlag = "D://MediaTest//"
 
@@ -59,6 +61,7 @@ func Execute() {
 
 	if authEnabled {
 		if authDigest {
+			//Add the authentication "Handler" that checks the user credentials
 			authenticator := auth.NewDigestAuthenticator("WebDAV", func(user, realm string) string {
 				if pwd, err := sqlServer.getUserPassword(user); err == nil {
 					return pwd
@@ -66,7 +69,7 @@ func Execute() {
 					return ""
 				}
 			})
-
+			//Add the above created authentication handler as a pre-WebDAV-authentication-layer
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if username, authinfo := authenticator.CheckAuth(r); username == "" {
 					authenticator.RequireAuth(w, r)
@@ -80,6 +83,7 @@ func Execute() {
 				}
 			})
 		} else {
+			//Add the authentication "Handler" that checks the user credentials
 			authenticator := &auth.BasicAuth{Realm: "WebDAV", Secrets: func(user, realm string) string {
 				if pwd, err := sqlServer.getUserPassword(user); err == nil {
 					return pwd
@@ -87,7 +91,7 @@ func Execute() {
 					return ""
 				}
 			}}
-
+			//Add the above created authentication handler as a pre-WebDAV-authentication-layer
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if username := authenticator.CheckAuth(r); username == "" {
 					authenticator.RequireAuth(w, r)
@@ -102,7 +106,7 @@ func Execute() {
 		http.HandleFunc("/", srv.ServeHTTP)
 	}
 
-	if serveSecure {
+	if httpsEnabled {
 		if _, err := os.Stat("./cert.pem"); err != nil {
 			fmt.Println("[x] No cert.pem in current directory. Please provide a valid cert")
 			return
@@ -111,12 +115,20 @@ func Execute() {
 			fmt.Println("[x] No key.pem in current directory. Please provide a valid cert")
 			return
 		}
-		go http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil)
+
+		if httpEnabled {
+			go http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil)
+		} else if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil); err != nil {
+			log.Fatalf("Error with WebDAV server: %v", err)
+		}
 	}
 
-	if err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil); err != nil {
-		log.Fatalf("Error with WebDAV server: %v", err)
+	if httpEnabled {
+		if err := http.ListenAndServe(fmt.Sprintf(":%d", httpPort), nil); err != nil {
+			log.Fatalf("Error with WebDAV server: %v", err)
+		}
 	}
+
 
 
 }

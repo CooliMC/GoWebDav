@@ -43,6 +43,7 @@ const (
 	getPasswordByUsername = "SELECT Password FROM `User` WHERE Username=?"
 )
 
+//Easy to use DB-Connection
 type DatabaseConnection struct {
 	dbClient *sql.DB
 	stmtGetPwdByUser *sql.Stmt

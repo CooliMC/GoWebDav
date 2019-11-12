@@ -6,6 +6,7 @@ import (
 	"strconv"
 )
 
+//MySQLClient for easier DB-Access without a special database
 func MySQLClient(
 	nInetAddress string,nInetPort int,
 	nUsername string, nPassword string,
@@ -17,6 +18,7 @@ func MySQLClient(
 	)
 }
 
+//MySQLClient for easier DB-Access with a special database
 func MySQLClientDB(
 	nInetAddress string,nInetPort int, nUsername string,
 	nPassword string, nDatabase string,
