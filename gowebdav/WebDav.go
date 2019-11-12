@@ -48,7 +48,6 @@ func Execute() {
 		},
 	}
 
-
 	sqlAddress = "192.168.2.200"
 	sqlPort = 43306
 	sqlPassword = "my-secret-pw"
@@ -128,7 +127,5 @@ func Execute() {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
 	}
-
-
 
 }
