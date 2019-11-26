@@ -61,13 +61,8 @@ func Execute() {
 	if authEnabled {
 		if authDigest {
 			//Add the authentication "Handler" that checks the user credentials
-			authenticator := auth.NewDigestAuthenticator("WebDAV", func(user, realm string) string {
-				if pwd, err := sqlServer.getUserPassword(user); err == nil {
-					return pwd
-				} else {
-					return ""
-				}
-			})
+			authenticator := getDigestAuth(sqlServer)
+
 			//Add the above created authentication handler as a pre-WebDAV-authentication-layer
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if username, authinfo := authenticator.CheckAuth(r); username == "" {
@@ -83,13 +78,8 @@ func Execute() {
 			})
 		} else {
 			//Add the authentication "Handler" that checks the user credentials
-			authenticator := &auth.BasicAuth{Realm: "WebDAV", Secrets: func(user, realm string) string {
-				if pwd, err := sqlServer.getUserPassword(user); err == nil {
-					return pwd
-				} else {
-					return ""
-				}
-			}}
+			authenticator := getBasicAuth(sqlServer)
+
 			//Add the above created authentication handler as a pre-WebDAV-authentication-layer
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 				if username := authenticator.CheckAuth(r); username == "" {
@@ -128,4 +118,24 @@ func Execute() {
 		}
 	}
 
+}
+
+func getBasicAuth(sqlServer *DatabaseConnection) *auth.BasicAuth {
+	return &auth.BasicAuth{ Realm: "WebDAV", Secrets: func(user, realm string) string {
+		if pwd, err := sqlServer.getUserPassword(user); err == nil {
+			return pwd
+		} else {
+			return ""
+		}
+	}}
+}
+
+func getDigestAuth(sqlServer *DatabaseConnection) *auth.DigestAuth {
+	return auth.NewDigestAuthenticator("WebDAV", func(user, realm string) string {
+		if pwd, err := sqlServer.getUserPassword(user); err == nil {
+			return pwd
+		} else {
+			return ""
+		}
+	})
 }
