@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/abbot/go-http-auth"
+	"golang.org/x/net/context"
 	"golang.org/x/net/webdav"
 	"log"
 	"net/http"
@@ -35,9 +36,13 @@ func init() {
 //Main WebDAVServer Execute() function
 func Execute() {
 	dirFlag = "D://MediaTest//"
+	sqlAddress = "192.168.2.200"
+	sqlPort = 43306
+	sqlPassword = "my-secret-pw"
+
 
 	srv := &webdav.Handler{
-		FileSystem: webdav.Dir(dirFlag),
+		FileSystem: DynamicFileSystem(dirFlag),//webdav.Dir(dirFlag),
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
@@ -47,10 +52,6 @@ func Execute() {
 			}
 		},
 	}
-
-	sqlAddress = "192.168.2.200"
-	sqlPort = 43306
-	sqlPassword = "my-secret-pw"
 
 	sqlServer, err := setupDatabase()
 	if err != nil {
@@ -68,8 +69,10 @@ func Execute() {
 				if username, authinfo := authenticator.CheckAuth(r); username == "" {
 					authenticator.RequireAuth(w, r)
 				} else {
-					ar := auth.AuthenticatedRequest{Request: *r, Username: username}
+					rN := r.WithContext(context.WithValue(r.Context(), "username", username))
+					ar := auth.AuthenticatedRequest{Request: *rN, Username: username}
 					ar.Header.Set(auth.AuthUsernameHeader, ar.Username)
+
 					if authinfo != nil {
 						w.Header().Set(authenticator.Headers.V().AuthInfo, *authinfo)
 					}
@@ -85,8 +88,10 @@ func Execute() {
 				if username := authenticator.CheckAuth(r); username == "" {
 					authenticator.RequireAuth(w, r)
 				} else {
-					ar := &auth.AuthenticatedRequest{Request: *r, Username: username}
+					rN := r.WithContext(context.WithValue(r.Context(), "username", username))
+					ar := &auth.AuthenticatedRequest{Request: *rN, Username: username}
 					ar.Header.Set(auth.AuthUsernameHeader, ar.Username)
+
 					srv.ServeHTTP(w, &ar.Request)
 				}
 			})
@@ -139,3 +144,33 @@ func getDigestAuth(sqlServer *DatabaseConnection) *auth.DigestAuth {
 		}
 	})
 }
+
+type DynamicFileSystem string/*struct {
+	defDir string
+}*/
+
+func (d DynamicFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
+	log.Printf("Test MKDIR: | %s | %s |", ctx.Value("username"), name)
+	return webdav.Dir(d).Mkdir(ctx, name, perm)
+}
+
+func (d DynamicFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
+	log.Printf("Test OpenFile: | %s | %s | %s |", ctx.Value("username"), name, "/user/marc" + name)
+	return webdav.Dir(d).OpenFile(ctx, "/user/marc" + name, flag, perm)
+}
+
+func (d DynamicFileSystem) RemoveAll(ctx context.Context, name string) error {
+	log.Printf("Test RemoveAll: | %s | %s |", ctx.Value("username"), name)
+	return webdav.Dir(d).RemoveAll(ctx, name)
+}
+
+func (d DynamicFileSystem) Rename(ctx context.Context, oldName, newName string) error {
+	log.Printf("Test Rename: | %s | %s | %s |", ctx.Value("username"), oldName, newName)
+	return webdav.Dir(d).Rename(ctx, oldName, newName)
+}
+
+func (d DynamicFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
+	log.Printf("Test Stat: | %s | %s | %s |", ctx.Value("username"), name, "/user/marc" + name)
+	return webdav.Dir(d).Stat(ctx, "/user/marc" + name)
+}
+
