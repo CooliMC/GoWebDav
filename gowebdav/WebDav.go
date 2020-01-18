@@ -42,7 +42,7 @@ func Execute() {
 
 
 	srv := &webdav.Handler{
-		FileSystem: DynamicFileSystem(dirFlag),//webdav.Dir(dirFlag),
+		FileSystem: DynamicFileSystem{webdav.Dir(dirFlag)},//DynamicFileSystem(dirFlag),//webdav.Dir(dirFlag),
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
@@ -145,32 +145,46 @@ func getDigestAuth(sqlServer *DatabaseConnection) *auth.DigestAuth {
 	})
 }
 
-type DynamicFileSystem string/*struct {
-	defDir string
-}*/
+/**
+ * The DynamicFileSystem struct implements an overridden
+ * FileSystem struct with context based username parsing.
+ *
+ * @author	CooliMC
+ * @version	1.0
+ * @since	2010-07-01
+ */
+
+type DynamicFileSystem struct{
+	webdav.FileSystem
+}
 
 func (d DynamicFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	log.Printf("Test MKDIR: | %s | %s |", ctx.Value("username"), name)
-	return webdav.Dir(d).Mkdir(ctx, name, perm)
+	log.Printf("Test MKDIR: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	//return webdav.Dir(d).Mkdir(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), perm)
+	return d.FileSystem.Mkdir(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), perm)
 }
 
 func (d DynamicFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	log.Printf("Test OpenFile: | %s | %s | %s |", ctx.Value("username"), name, "/user/marc" + name)
-	return webdav.Dir(d).OpenFile(ctx, "/user/marc" + name, flag, perm)
+	log.Printf("Test OpenFile: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	//return webdav.Dir(d).OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
+	return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
 }
 
 func (d DynamicFileSystem) RemoveAll(ctx context.Context, name string) error {
-	log.Printf("Test RemoveAll: | %s | %s |", ctx.Value("username"), name)
-	return webdav.Dir(d).RemoveAll(ctx, name)
+	log.Printf("Test RemoveAll: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	//return webdav.Dir(d).RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	return d.FileSystem.RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 }
 
 func (d DynamicFileSystem) Rename(ctx context.Context, oldName, newName string) error {
-	log.Printf("Test Rename: | %s | %s | %s |", ctx.Value("username"), oldName, newName)
-	return webdav.Dir(d).Rename(ctx, oldName, newName)
+	log.Printf("Test Rename: | %s | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
+	//return webdav.Dir(d).Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
+	return d.FileSystem.Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
 }
 
 func (d DynamicFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	log.Printf("Test Stat: | %s | %s | %s |", ctx.Value("username"), name, "/user/marc" + name)
-	return webdav.Dir(d).Stat(ctx, "/user/marc" + name)
+	log.Printf("Test Stat: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	//return webdav.Dir(d).Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 }
 
