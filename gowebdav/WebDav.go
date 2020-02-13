@@ -16,19 +16,19 @@ var httpPort, httpsPort, sqlPort int
 var httpEnabled, httpsEnabled, authEnabled, authDigest bool
 
 func init() {
-	dirFlag = *flag.String("root_dir", "./media", "Directory to server from. Default is media.")
-	httpPort = *flag.Int("port_http", 80, "Port to server HTTP.")
-	httpsPort = *flag.Int("port_https", 443, "Port to server HTTPS.")
-	httpEnabled = *flag.Bool("http_enabled", true, "Server HTTP. Default true.")
-	httpsEnabled = *flag.Bool("https_enabled", false, "Server HTTPS. Default false.")
-	authEnabled = *flag.Bool("auth_enabled", true, "Authentication enabled. Default true.")
-	authDigest = *flag.Bool("auth_digest", false, "Digest Authentication. Default Basic.")
+	flag.StringVar(&dirFlag, "root_dir", "./media", "Directory to server from. Default is media.")
+	flag.IntVar(&httpPort, "port_http", 80, "Port to server HTTP.")
+	flag.IntVar(&httpsPort, "port_https", 443, "Port to server HTTPS.")
+	flag.BoolVar(&httpEnabled, "http_enabled", true, "Server HTTP. Default true.")
+	flag.BoolVar(&httpsEnabled, "https_enabled", false, "Server HTTPS. Default false.")
+	flag.BoolVar(&authEnabled, "auth_enabled", true, "Authentication enabled. Default true.")
+	flag.BoolVar(&authDigest, "auth_digest", false, "Digest Authentication. Default Basic.")
 
-	sqlAddress = *flag.String("sql_address", "127.0.0.1", "SQL-Server address.")
-	sqlPort = *flag.Int("sql_port", 3306, "SQL-Server port.")
-	sqlUsername = *flag.String("sql_username", "root", "SQL-Server username for this application.")
-	sqlPassword = *flag.String("sql_password", "", "SQL-Server user-password for this application.")
-	sqlDatabase = *flag.String("sql_database", "gowebdav", "SQL-Server database for this application.")
+	flag.StringVar(&sqlAddress, "sql_address", "127.0.0.1", "SQL-Server address.")
+	flag.IntVar(&sqlPort, "sql_port", 3306, "SQL-Server port.")
+	flag.StringVar(&sqlUsername, "sql_username", "root", "SQL-Server username for this application.")
+	flag.StringVar(&sqlPassword, "sql_password", "", "SQL-Server user-password for this application.")
+	flag.StringVar(&sqlDatabase, "sql_database", "gowebdav", "SQL-Server database for this application.")
 
 	flag.Parse()
 }
@@ -40,9 +40,8 @@ func Execute() {
 	sqlPort = 43306
 	sqlPassword = "my-secret-pw"
 
-
 	srv := &webdav.Handler{
-		FileSystem: DynamicFileSystem{webdav.Dir(dirFlag)},//DynamicFileSystem(dirFlag),//webdav.Dir(dirFlag),
+		FileSystem: DynamicFileSystem{webdav.Dir(dirFlag)},
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
@@ -151,7 +150,7 @@ func getDigestAuth(sqlServer *DatabaseConnection) *auth.DigestAuth {
  *
  * @author	CooliMC
  * @version	1.0
- * @since	2010-07-01
+ * @since	2019-07-01
  */
 
 type DynamicFileSystem struct{
@@ -161,30 +160,59 @@ type DynamicFileSystem struct{
 func (d DynamicFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	log.Printf("Test MKDIR: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 	//return webdav.Dir(d).Mkdir(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), perm)
+	/*if strings.HasPrefix(name, "/C") {
+		return d.FileSystem.Mkdir(ctx, fmt.Sprintf("/user/%s%s", "admin", name), perm)
+	} else {
+		return d.FileSystem.Mkdir(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), perm)
+	}*/
 	return d.FileSystem.Mkdir(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), perm)
 }
 
 func (d DynamicFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	log.Printf("Test OpenFile: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 	//return webdav.Dir(d).OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
+	/*if strings.HasPrefix(name, "/C") {
+		return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", "admin", name), flag, perm)
+	} else {
+		return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
+	}*/
 	return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
 }
 
 func (d DynamicFileSystem) RemoveAll(ctx context.Context, name string) error {
 	log.Printf("Test RemoveAll: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 	//return webdav.Dir(d).RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	/*if strings.HasPrefix(name, "/C") {
+		if name == "/C" {
+			_ = d.FileSystem.RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+		}
+		return d.FileSystem.RemoveAll(ctx, fmt.Sprintf("/user/%s%s", "admin", name))
+	} else {
+		return d.FileSystem.RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	}*/
 	return d.FileSystem.RemoveAll(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 }
 
 func (d DynamicFileSystem) Rename(ctx context.Context, oldName, newName string) error {
 	log.Printf("Test Rename: | %s | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
 	//return webdav.Dir(d).Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
+	/*if strings.HasPrefix(oldName, "/C") {
+		_ = d.FileSystem.Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
+		return d.FileSystem.Rename(ctx, fmt.Sprintf("/user/%s%s", "admin", oldName), fmt.Sprintf("/user/%s%s", "admin", newName))
+	} else {
+		return d.FileSystem.Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
+	}*/
 	return d.FileSystem.Rename(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), oldName), fmt.Sprintf("/user/%s%s", ctx.Value("username"), newName))
 }
 
 func (d DynamicFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 	log.Printf("Test Stat: | %s |", fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 	//return webdav.Dir(d).Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	/*if strings.HasPrefix(name, "/C") {
+		return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", "admin", name))
+	} else {
+		return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+	}*/
 	return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 }
 
