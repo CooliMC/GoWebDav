@@ -11,18 +11,20 @@ import (
 	"os"
 )
 
-var dirFlag, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
+var rootPath, certificatePath, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
 var httpPort, httpsPort, sqlPort int
 var httpEnabled, httpsEnabled, authEnabled, authDigest bool
 
 func init() {
-	flag.StringVar(&dirFlag, "root_dir", "./media", "Directory to server from. Default is media.")
-	flag.IntVar(&httpPort, "port_http", 80, "Port to server HTTP.")
-	flag.IntVar(&httpsPort, "port_https", 443, "Port to server HTTPS.")
-	flag.BoolVar(&httpEnabled, "http_enabled", true, "Server HTTP. Default true.")
-	flag.BoolVar(&httpsEnabled, "https_enabled", false, "Server HTTPS. Default false.")
-	flag.BoolVar(&authEnabled, "auth_enabled", true, "Authentication enabled. Default true.")
-	flag.BoolVar(&authDigest, "auth_digest", false, "Digest Authentication. Default Basic.")
+	flag.StringVar(&rootPath, "root_dir", "./media", "Directory to server from. Default '/media'.")
+	flag.IntVar(&httpPort, "port_http", 80, "Port to server HTTP. Default '80'.")
+	flag.IntVar(&httpsPort, "port_https", 443, "Port to server HTTPS. Default '443'.")
+	flag.BoolVar(&httpEnabled, "http_enabled", true, "Server HTTP. Default 'true'.")
+	flag.BoolVar(&httpsEnabled, "https_enabled", false, "Server HTTPS. Default 'false'.")
+	flag.StringVar(&certificatePath, "certificate_path", ".", "Directory to HTTPS certificate files. Default './'.")
+	flag.BoolVar(&authEnabled, "auth_enabled", true, "Authentication enabled. Default 'true'.")
+	flag.BoolVar(&authDigest, "auth_digest", false, "Digest Authentication. Default 'Basic'.")
+
 
 	flag.StringVar(&sqlAddress, "sql_address", "127.0.0.1", "SQL-Server address.")
 	flag.IntVar(&sqlPort, "sql_port", 3306, "SQL-Server port.")
@@ -35,13 +37,13 @@ func init() {
 
 //Main WebDAVServer Execute() function
 func Execute() {
-	dirFlag = "D://MediaTest//"
+	rootPath = "D://MediaTest//"
 	sqlAddress = "192.168.2.200"
 	sqlPort = 43306
 	sqlPassword = "my-secret-pw"
 
 	srv := &webdav.Handler{
-		FileSystem: DynamicFileSystem{webdav.Dir(dirFlag)},
+		FileSystem: DynamicFileSystem{webdav.Dir(rootPath)},
 		LockSystem: webdav.NewMemLS(),
 		Logger: func(r *http.Request, err error) {
 			if err != nil {
@@ -100,18 +102,24 @@ func Execute() {
 	}
 
 	if httpsEnabled {
-		if _, err := os.Stat("./cert.pem"); err != nil {
-			fmt.Println("[x] No cert.pem in current directory. Please provide a valid cert")
+		//Create the cert.pem and key.pem file paths for check and later use
+		certFile := fmt.Sprintf("%s/cert.pem", certificatePath)
+		keyFile := fmt.Sprintf("%s/key.pem", certificatePath)
+
+		//Check if there is a valid cert and key file at the given path
+		if _, err := os.Stat(certFile); err != nil {
+			fmt.Println("[x] No cert.pem in the given directory. Please provide a valid cert")
 			return
 		}
-		if _, er := os.Stat("./key.pem"); er != nil {
-			fmt.Println("[x] No key.pem in current directory. Please provide a valid cert")
+		if _, er := os.Stat(keyFile); er != nil {
+			fmt.Println("[x] No key.pem in the given directory. Please provide a valid cert")
 			return
 		}
 
+		//Start webserver(s) with checked and valid cert and key file
 		if httpEnabled {
-			go http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil)
-		} else if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), "cert.pem", "key.pem", nil); err != nil {
+			go http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), certFile, keyFile, nil)
+		} else if err := http.ListenAndServeTLS(fmt.Sprintf(":%d", httpsPort), certFile, keyFile, nil); err != nil {
 			log.Fatalf("Error with WebDAV server: %v", err)
 		}
 	}
