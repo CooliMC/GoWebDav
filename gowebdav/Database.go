@@ -105,7 +105,7 @@ func createDatabaseConnection(dbClient *sql.DB) *DatabaseConnection {
 //All generic function for quick Setup and Check
 func setupDatabase() (*DatabaseConnection, error) {
 	//Create a new Connection the given DB and test it
-	dbClient, err := utils.MySQLClient(sqlAddress, sqlPort, sqlUsername, sqlPassword)
+	dbClient, err := utils.MySQLClientDB(sqlAddress, sqlPort, sqlUsername, sqlPassword, sqlDatabase)
 
 	//Check if an error occurred and return
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sync"
 )
 
 var rootPath, certificatePath, sqlAddress, sqlUsername, sqlPassword, sqlDatabase string
@@ -86,6 +87,7 @@ func Execute() {
 
 			//Add the above created authentication handler as a pre-WebDAV-authentication-layer
 			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				println("Request from:", r.RemoteAddr)
 				if username := authenticator.CheckAuth(r); username == "" {
 					authenticator.RequireAuth(w, r)
 				} else {
@@ -153,6 +155,26 @@ func getDigestAuth(sqlServer *DatabaseConnection) *auth.DigestAuth {
 }
 
 /**
+ * Implementing a rate limiting library / class that
+ * handles all incoming http request calls
+ *
+ * @author	CooliMC
+ * @version	1.0
+ * @since	2019-07-01
+ */
+
+type IPRateLimiter struct {
+	//ips map[string]*rate.Limiter
+	mu  *sync.RWMutex
+	//r   rate.Limit
+	b   int
+}
+
+func (r IPRateLimiter) KK() {
+
+}
+
+/**
  * The DynamicFileSystem struct implements an overridden
  * FileSystem struct with context based username parsing.
  *
@@ -184,6 +206,16 @@ func (d DynamicFileSystem) OpenFile(ctx context.Context, name string, flag int, 
 	} else {
 		return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
 	}*/
+	if(name == "/Okay.txt") {
+		println("NIFGNIOEibengisejgbvinsegnkbgjuj")
+		_,e := d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s1", ctx.Value("username"), name), flag, perm)
+
+		if(e != nil) {
+
+		}
+	}
+
+
 	return d.FileSystem.OpenFile(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name), flag, perm)
 }
 
@@ -221,6 +253,19 @@ func (d DynamicFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, 
 	} else {
 		return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 	}*/
+	/*ff,_ := d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
+
+	println("----------- ", ff.Name(), " (" , ff.Size(), ") -----------")
+	println(ff.IsDir())
+	println(ff.Mode().IsDir())
+	println(ff.Mode().String())
+	println(ff.Mode().IsRegular())
+	println(ff.Mode().Perm().IsDir())
+	println(ff.Mode().Perm().String())
+	println(ff.Mode().Perm().IsRegular())
+	println(ff.Sys())
+	println("-------------------------------")*/
+
 	return d.FileSystem.Stat(ctx, fmt.Sprintf("/user/%s%s", ctx.Value("username"), name))
 }
 
